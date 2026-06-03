@@ -1,0 +1,481 @@
+// Hiive Agentic Marketing OS — data model
+// pgvector for embeddings; JSON columns for flexible metrics/goals.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  // Pooled connection (Supabase PgBouncer) for the app at runtime.
+  url        = env("DATABASE_URL")
+  // Direct connection for migrations (Supabase requires this for Prisma Migrate).
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum MemoryType {
+  semantic
+  episodic
+  procedural
+}
+
+enum MissionStatus {
+  created
+  planning
+  executing
+  evaluating
+  reflecting
+  awaiting_approval
+  completed
+  failed
+}
+
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+}
+
+enum CampaignHealth {
+  healthy
+  warning
+  at_risk
+  critical
+}
+
+enum PostStatus {
+  draft
+  review
+  approved
+  scheduled
+  published
+  analyzing
+  underperforming
+  completed
+}
+
+enum AdStatus {
+  draft
+  active
+  paused
+  completed
+}
+
+enum AgentRunStatus {
+  pending
+  running
+  completed
+  failed
+  skipped
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  edited
+}
+
+enum ApprovalType {
+  publish_post
+  schedule_post
+  budget_change
+  campaign_launch
+  external_message
+}
+
+enum RecommendationStatus {
+  open
+  accepted
+  dismissed
+  superseded
+}
+
+// ----------------------------------------------------------------------------
+// Users
+// ----------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("marketer")
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// Memory / RAG
+// ----------------------------------------------------------------------------
+
+model FileAsset {
+  id         String        @id @default(cuid())
+  fileName   String
+  mimeType   String
+  sizeBytes  Int           @default(0)
+  url        String?
+  text       String?
+  tags       String[]      @default([])
+  status     String        @default("uploaded") // uploaded | extracting | embedding | ready | failed
+  importance Float         @default(0.5) // 0..1 memory tier; set at upload
+  locked     Boolean       @default(false) // if true, agents never auto-change importance/content
+  chunks     MemoryChunk[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model MemoryChunk {
+  id          String                @id @default(cuid())
+  fileId      String?
+  file        FileAsset?           @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  content     String
+  embedding   Unsupported("vector(1536)")?
+  memoryType  MemoryType            @default(semantic)
+  tags        String[]              @default([])
+  tokenCount  Int                   @default(0)
+  chunkIndex  Int                   @default(0)
+  importance  Float                 @default(0.5) // evolving memory tier (0..1)
+  locked      Boolean               @default(false) // protected from auto-importance updates
+  supersededCount Int               @default(0) // times newer memory contradicted/superseded this
+  lastReviewedAt DateTime?
+  metadata    Json?
+  createdAt   DateTime              @default(now())
+
+  @@index([fileId])
+}
+
+// ----------------------------------------------------------------------------
+// Missions
+// ----------------------------------------------------------------------------
+
+model Mission {
+  id           String        @id @default(cuid())
+  title        String
+  objective    String
+  status       MissionStatus @default(created)
+  priority     Priority      @default(medium)
+  targetMetric Json // e.g. { "metric": "founder_leads", "baseline": 100, "target": 130, "unit": "leads" }
+  plan         Json? // ordered task breakdown from the planner
+  campaigns    Campaign[]
+  agentRuns    AgentRun[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Campaigns
+// ----------------------------------------------------------------------------
+
+model Campaign {
+  id              String           @id @default(cuid())
+  missionId       String?
+  mission         Mission?         @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  name            String
+  objective       String
+  audience        String
+  status          CampaignStatus   @default(draft)
+  health          CampaignHealth   @default(healthy)
+  channels        String[]         @default([])
+  budget          Float            @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  goals           Json // { impressions, clicks, leads, ... }
+  posts           Post[]
+  ads             AdCampaign[]
+  recommendations Recommendation[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([missionId])
+}
+
+// ----------------------------------------------------------------------------
+// Posts
+// ----------------------------------------------------------------------------
+
+model Post {
+  id              String           @id @default(cuid())
+  campaignId      String
+  campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  platform        String
+  copy            String
+  mediaUrl        String?
+  status          PostStatus       @default(draft)
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  metrics         Json? // { impressions, likes, comments, shares, clicks, conversions, ctr }
+  metricsHistory  Json? // [{ capturedAt, impressions, clicks, ctr, conversions }] — trajectory
+  aiAnalysis      Json?
+  simulation      Json? // last swarm result
+  approvalStatus  ApprovalStatus?
+  recommendations Recommendation[]
+  comments        PostComment[]
+  audience        AudienceComment[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([campaignId])
+  @@index([status])
+}
+
+// Notion-style comments + agent suggestions on a post's copy.
+model PostComment {
+  id            String        @id @default(cuid())
+  postId        String
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorKind    String // human | agent
+  author        String // user email or agent type
+  type          String // comment | suggestion
+  body          String
+  quotedText    String? // the highlighted span the comment refers to
+  rangeStart    Int? // char offset into copy
+  rangeEnd      Int?
+  suggestedText String? // single-option suggestion: the replacement for quotedText
+  options       Json? // multi-option suggestion: [{ id, label, text }] the human picks from
+  chosenOptionId String? // which option the human chose
+  status        String        @default("open") // open | resolved | accepted | rejected
+  agentRunId    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([postId])
+}
+
+// Mock audience/social engagement comments pulled on a post (like metrics).
+model AudienceComment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    String // mock social handle
+  text      String
+  sentiment String   @default("neutral") // positive | neutral | negative
+  theme     String?
+  status    String   @default("open") // open | replied | ignored
+  reply     String?
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+// ----------------------------------------------------------------------------
+// Ads
+// ----------------------------------------------------------------------------
+
+model AdCampaign {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name        String   @default("Untitled Ad")
+  platform    String
+  budget      Float    @default(0)
+  spend       Float    @default(0)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  status      AdStatus @default(active)
+  startDate   DateTime?
+  endDate     DateTime?
+  metrics     Json? // derived: ctr, cpc, cpa
+  aiAnalysis  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+// ----------------------------------------------------------------------------
+// Agents
+// ----------------------------------------------------------------------------
+
+model AgentRun {
+  id              String           @id @default(cuid())
+  agentType       String
+  missionId       String?
+  mission         Mission?         @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  entityType      String? // campaign | post | ad | mission
+  entityId        String?
+  input           Json
+  output          Json?
+  status          AgentRunStatus   @default(pending)
+  summary         String?
+  steps           AgentStep[]
+  reflections     AgentReflection[]
+  recommendations Recommendation[]
+  approvals       ApprovalRequest[]
+  learnings       LearningExample[]
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@index([agentType])
+  @@index([missionId])
+}
+
+// Visible agent timeline — one row per action the agent takes.
+model AgentStep {
+  id         String   @id @default(cuid())
+  agentRunId String
+  agentRun   AgentRun @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+  order      Int
+  type       String // thought | tool_call | tool_result | output | approval | reflection
+  label      String
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([agentRunId])
+}
+
+model AgentReflection {
+  id          String   @id @default(cuid())
+  agentRunId  String
+  agentRun    AgentRun @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+  agentType   String
+  whatWorked  String?
+  whatFailed  String?
+  improvement String?
+  reflection  String
+  score       Float?
+  createdAt   DateTime @default(now())
+
+  @@index([agentRunId])
+  @@index([agentType])
+}
+
+// ----------------------------------------------------------------------------
+// Recommendations / Alerts
+// ----------------------------------------------------------------------------
+
+model Recommendation {
+  id          String               @id @default(cuid())
+  agentRunId  String?
+  agentRun    AgentRun?            @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+  campaignId  String?
+  campaign    Campaign?            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?                @relation(fields: [postId], references: [id], onDelete: Cascade)
+  agentType   String
+  title       String
+  body        String
+  severity    String               @default("info") // info | warning | critical | opportunity
+  actions     Json? // list of suggested actions
+  status      RecommendationStatus @default(open)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([campaignId])
+  @@index([postId])
+}
+
+// ----------------------------------------------------------------------------
+// Approvals + Learning
+// ----------------------------------------------------------------------------
+
+model ApprovalRequest {
+  id             String         @id @default(cuid())
+  agentRunId     String?
+  agentRun       AgentRun?     @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+  type           ApprovalType
+  entityType     String
+  entityId       String
+  title          String
+  proposedAction Json
+  status         ApprovalStatus @default(pending)
+  feedback       String?
+  editedAction   Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status])
+}
+
+model LearningExample {
+  id             String   @id @default(cuid())
+  agentRunId     String?
+  agentRun       AgentRun? @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+  agentType      String
+  context        String? // what was being generated
+  originalOutput String
+  editedOutput   String
+  reason         String?
+  approvalStatus String? // approved | rejected | edited
+  campaignId     String?
+  postId         String?
+  outcomeScore   Float?
+  createdAt      DateTime @default(now())
+
+  @@index([agentType])
+}
+
+// ----------------------------------------------------------------------------
+// Knowledge graph
+// ----------------------------------------------------------------------------
+
+model KnowledgeNode {
+  id        String          @id @default(cuid())
+  type      String // campaign | post | ad | lead | memory | mission
+  refId     String // id of the underlying entity
+  label     String
+  metadata  Json?
+  outEdges  KnowledgeEdge[] @relation("from")
+  inEdges   KnowledgeEdge[] @relation("to")
+  createdAt DateTime        @default(now())
+
+  @@unique([type, refId])
+}
+
+model KnowledgeEdge {
+  id        String        @id @default(cuid())
+  fromId    String
+  from      KnowledgeNode @relation("from", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        KnowledgeNode @relation("to", fields: [toId], references: [id], onDelete: Cascade)
+  relation  String // CAMPAIGN_CREATED_POST | POST_USED_MEMORY | AD_PROMOTED_POST | POST_GENERATED_LEADS | ...
+  metadata  Json?
+  createdAt DateTime      @default(now())
+
+  @@index([fromId])
+  @@index([toId])
+}
+
+// ----------------------------------------------------------------------------
+// Audit
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String // user email or agent type
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+}
+
+// ----------------------------------------------------------------------------
+// Integrations (content-calendar apps)
+// ----------------------------------------------------------------------------
+
+model Integration {
+  id         String   @id @default(cuid())
+  provider   String   @unique // google_calendar | notion | buffer
+  status     String   @default("disconnected") // connected | disconnected
+  config     Json?
+  lastSyncAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

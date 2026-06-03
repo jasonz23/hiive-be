@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE "FileAsset" ADD COLUMN     "importance" DOUBLE PRECISION NOT NULL DEFAULT 0.5,
+ADD COLUMN     "locked" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "MemoryChunk" ADD COLUMN     "importance" DOUBLE PRECISION NOT NULL DEFAULT 0.5,
+ADD COLUMN     "lastReviewedAt" TIMESTAMP(3),
+ADD COLUMN     "locked" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "supersededCount" INTEGER NOT NULL DEFAULT 0;

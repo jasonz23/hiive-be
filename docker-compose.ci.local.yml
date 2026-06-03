@@ -1,0 +1,35 @@
+# Ephemeral services for CI (Cloud Build). Brought up before the test step and
+# torn down after. Service/container names match the cloudbuild substitutions so
+# later build steps can reach them by hostname on the shared `cloudbuild` network.
+version: '3.8'
+
+services:
+  hiive-db-test-ci:
+    container_name: hiive-db-test-ci
+    # pgvector image — the schema enables the `vector` extension via migrations.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hiive_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d hiive_test']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  hiive-redis-test-ci:
+    container_name: hiive-redis-test-ci
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+# Join Cloud Build's default network so sibling build steps resolve the
+# containers by name (e.g. host `hiive-db-test-ci`).
+networks:
+  default:
+    name: cloudbuild
+    external: true

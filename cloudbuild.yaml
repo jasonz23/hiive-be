@@ -1,0 +1,74 @@
+# Hiive backend — build → migrate → deploy to Cloud Run.
+# Deployed to the same GCP project the build runs in ($PROJECT_ID).
+substitutions:
+  _REGION: us-west1
+  _ARTIFACT_REPOSITORY: hiive-backend
+  _IMAGE_NAME: hiive-be
+  _CLOUD_RUN_SERVICE: hiive-be
+  # CORS allow-list — supports wildcards (e.g. https://*.vercel.app) and a
+  # comma-separated list. Add your custom domain here too if you have one.
+  _CORS_ALLOW_LIST: 'https://*.vercel.app'
+  # File storage — GCS in prod (Cloud Run provides ADC credentials automatically).
+  _GCS_BUCKET_NAME: hiive-uploads
+  _BACKEND_ORIGIN: https://hiive-be.run.app
+  # Boot idle in staging so it doesn't burn OpenAI 24/7 — flip with the in-app
+  # Engine toggles or set this to 'false'.
+  _AUTONOMOUS_DISABLED: 'true'
+
+steps:
+  - id: docker-build
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA',
+        '.',
+      ]
+
+  - id: docker-push
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA',
+      ]
+
+  - id: migrate
+    name: '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA'
+    dir: /usr/src/app
+    args: ['run', 'prisma:migrate:ci']
+    # Prisma Migrate uses DIRECT_URL (Supabase direct connection, not the pooler).
+    secretEnv: ['DATABASE_URL', 'DIRECT_URL']
+
+  - id: deploy-api
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_CLOUD_RUN_SERVICE}
+      - --image
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+      - --args=run,start:prod
+      - --region
+      - ${_REGION}
+      - --port=8001
+      - --allow-unauthenticated
+      - '--set-secrets=DATABASE_URL=HIIVE_DATABASE_URL:latest,DIRECT_URL=HIIVE_DIRECT_URL:latest,REDIS_URL=HIIVE_REDIS_URL:latest,OPENAI_API_KEY=HIIVE_OPENAI_API_KEY:latest'
+      # `^|||^` custom delimiter so comma-containing values (CORS list) are safe.
+      - '--update-env-vars=^|||^NODE_ENV=production|||LOG_LEVEL=info|||CORS_ALLOW_LIST=${_CORS_ALLOW_LIST}|||OPENAI_CHAT_MODEL=gpt-4o-mini|||OPENAI_EMBEDDING_MODEL=text-embedding-3-small|||EMBEDDING_DIM=1536|||AUTONOMOUS_DISABLED=${_AUTONOMOUS_DISABLED}|||STORAGE_PROVIDER=gcs|||GCS_BUCKET_NAME=${_GCS_BUCKET_NAME}|||BACKEND_ORIGIN=${_BACKEND_ORIGIN}'
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/HIIVE_DATABASE_URL/versions/latest
+      env: 'DATABASE_URL'
+    - versionName: projects/$PROJECT_ID/secrets/HIIVE_DIRECT_URL/versions/latest
+      env: 'DIRECT_URL'
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

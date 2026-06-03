@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: hiive-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hiive
+      POSTGRES_PASSWORD: hiive
+      POSTGRES_DB: hiive
+    ports:
+      - "55432:5432"
+    volumes:
+      - hiive_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hiive -d hiive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: hiive-redis
+    restart: unless-stopped
+    ports:
+      - "63799:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - hiive_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hiive_db_data:
+  hiive_redis_data:

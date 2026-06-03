@@ -1,0 +1,2533 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Liveness + dependency check",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/memory/search": {
+      "post": {
+        "operationId": "MemoryController_search",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchMemoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ranked memory chunks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemoryHitDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Semantic search over marketing memory (RAG)",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/memory/stats": {
+      "get": {
+        "operationId": "MemoryController_stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Counts of stored memory chunks"
+          }
+        },
+        "summary": "Memory chunk counts by type",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/memory/timeline": {
+      "get": {
+        "operationId": "MemoryController_timeline",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Recent memory changes over time (newest first, with importance)",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/files/raw/{key}": {
+      "get": {
+        "operationId": "FilesController_raw",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Serve a locally-stored file (dev storage)",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/files/upload": {
+      "post": {
+        "operationId": "FilesController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated memory tags",
+                    "example": "brand_guideline,compliance"
+                  },
+                  "importance": {
+                    "type": "string",
+                    "description": "Memory importance tier 0..1",
+                    "example": "0.75"
+                  },
+                  "locked": {
+                    "type": "string",
+                    "description": "Lock from auto-importance updates (true/false)",
+                    "example": "false"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File stored and ingested into memory"
+          }
+        },
+        "summary": "Upload a document into RAG memory (PDF/DOCX/TXT/MD)",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/files/{id}": {
+      "patch": {
+        "operationId": "FilesController_updateMeta",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update a document’s importance / lock / markdown text (re-indexes memory)",
+        "tags": [
+          "files"
+        ]
+      },
+      "get": {
+        "operationId": "FilesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a single uploaded document",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/files": {
+      "get": {
+        "operationId": "FilesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Uploaded files"
+          }
+        },
+        "summary": "List uploaded documents with chunk counts",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/campaigns": {
+      "post": {
+        "operationId": "CampaignsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Campaign created"
+          }
+        },
+        "summary": "Create a campaign",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "get": {
+        "operationId": "CampaignsController_findAll",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "draft",
+                "active",
+                "paused",
+                "completed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "health",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "healthy",
+                "warning",
+                "at_risk",
+                "critical"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List campaigns (optionally filter by status/health)",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/campaigns/{id}": {
+      "get": {
+        "operationId": "CampaignsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a campaign with posts, ads, and open recommendations",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "patch": {
+        "operationId": "CampaignsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCampaignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update a campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/campaigns/{id}/summary": {
+      "get": {
+        "operationId": "CampaignsController_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Campaign summary: goal progress + AI narrative",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/campaigns/{id}/progress": {
+      "get": {
+        "operationId": "CampaignsController_progress",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Goal attainment and health snapshot",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/posts": {
+      "post": {
+        "operationId": "PostsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Post created"
+          }
+        },
+        "summary": "Create a post (content calendar entry)",
+        "tags": [
+          "posts"
+        ]
+      },
+      "get": {
+        "operationId": "PostsController_findAll",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "draft",
+                "review",
+                "approved",
+                "scheduled",
+                "published",
+                "analyzing",
+                "underperforming",
+                "completed"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List posts (optionally by campaign/status) — content calendar feed",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}": {
+      "get": {
+        "operationId": "PostsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a post with metrics, analysis, and recommendations",
+        "tags": [
+          "posts"
+        ]
+      },
+      "patch": {
+        "operationId": "PostsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update a post",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}/metrics": {
+      "patch": {
+        "operationId": "PostsController_setMetrics",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMetricsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Manually set post metrics (CTR recomputed)",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}/metrics/refresh": {
+      "post": {
+        "operationId": "PostsController_refresh",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Updated metrics + previous snapshot"
+          }
+        },
+        "summary": "Refresh metrics (simulates a platform refresh). Values only increase and a performance-monitoring job is triggered automatically.",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}/publish": {
+      "post": {
+        "operationId": "PostsController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Published post"
+          }
+        },
+        "summary": "Publish a post (simulates going live). The autonomous metric-checker then pulls mock analytics on a cron and runs the agent loops automatically.",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/ads": {
+      "post": {
+        "operationId": "AdsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ad created"
+          }
+        },
+        "summary": "Create an ad (with derived CTR/CPC/CPA)",
+        "tags": [
+          "ads"
+        ]
+      },
+      "get": {
+        "operationId": "AdsController_findAll",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List ads (optionally by campaign)",
+        "tags": [
+          "ads"
+        ]
+      }
+    },
+    "/api/ads/{id}": {
+      "get": {
+        "operationId": "AdsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get an ad with derived metrics",
+        "tags": [
+          "ads"
+        ]
+      },
+      "patch": {
+        "operationId": "AdsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update an ad",
+        "tags": [
+          "ads"
+        ]
+      }
+    },
+    "/api/ads/{id}/analyze": {
+      "post": {
+        "operationId": "AdsController_analyze",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "AI optimization analysis for the ad’s campaign",
+        "tags": [
+          "ads"
+        ]
+      }
+    },
+    "/api/recommendations": {
+      "get": {
+        "operationId": "RecommendationsController_list",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "open",
+                "accepted",
+                "dismissed",
+                "superseded"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List agent recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/recommendations/{id}/status": {
+      "patch": {
+        "operationId": "RecommendationsController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Accept / dismiss a recommendation",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/reflections": {
+      "get": {
+        "operationId": "ReflectionsController_list",
+        "parameters": [
+          {
+            "name": "agentType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List agent reflections (what worked / failed / improve)",
+        "tags": [
+          "reflections"
+        ]
+      }
+    },
+    "/api/agents/health": {
+      "get": {
+        "operationId": "ReflectionsController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Agent health: approval/rejection/success rates + avg score",
+        "tags": [
+          "reflections"
+        ]
+      }
+    },
+    "/api/learning/examples": {
+      "get": {
+        "operationId": "LearningController_list",
+        "parameters": [
+          {
+            "name": "agentType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List captured learning examples (human-edit deltas)",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
+    "/api/approvals": {
+      "get": {
+        "operationId": "ApprovalsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "edited"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List approval requests",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/approvals/{id}": {
+      "get": {
+        "operationId": "ApprovalsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get an approval request",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/approvals/{id}/approve": {
+      "post": {
+        "operationId": "ApprovalsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Approve and execute the gated action",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/approvals/{id}/reject": {
+      "post": {
+        "operationId": "ApprovalsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Reject (captured as a learning example)",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/approvals/{id}/edit": {
+      "post": {
+        "operationId": "ApprovalsController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Edit + approve (captures the human-edit delta as learning)",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/knowledge/graph": {
+      "get": {
+        "operationId": "KnowledgeController_graph",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Knowledge graph (nodes + relationship edges)",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/rebuild": {
+      "post": {
+        "operationId": "KnowledgeController_rebuild",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Rebuild the graph from current campaigns/posts/ads",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/posts/{postId}/comments": {
+      "get": {
+        "operationId": "CommentsController_list",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List comments + agent suggestions on a post",
+        "tags": [
+          "comments"
+        ]
+      },
+      "post": {
+        "operationId": "CommentsController_create",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Add a human comment or suggestion to a post",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/posts/{postId}/comments/{commentId}/accept": {
+      "post": {
+        "operationId": "CommentsController_accept",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Accept a suggestion (applies the edit + records learning)",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/posts/{postId}/comments/{commentId}/choose": {
+      "post": {
+        "operationId": "CommentsController_choose",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Pick one of a suggestion’s options — the agent applies it",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/posts/{postId}/comments/{commentId}/reject": {
+      "post": {
+        "operationId": "CommentsController_reject",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Reject a suggestion (records learning)",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/posts/{postId}/comments/{commentId}/resolve": {
+      "post": {
+        "operationId": "CommentsController_resolve",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Resolve a comment thread",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/posts/{id}/copy-edit": {
+      "post": {
+        "operationId": "PostCopyEditController_copyEdit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Human copy edit — edits a draft in place, or (if the post is live) saves it to the memory bank and spins a new draft variant instead of mutating it",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{postId}/audience": {
+      "get": {
+        "operationId": "AudienceController_get",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Audience comments + the engagement agent’s latest summary",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/api/posts/{postId}/audience/{commentId}/reply": {
+      "post": {
+        "operationId": "AudienceController_reply",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Send a reply to an audience comment (mock) + record it in memory",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/api/agents": {
+      "get": {
+        "operationId": "AgentsController_available",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List available agent types",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/tools": {
+      "get": {
+        "operationId": "AgentsController_toolSpecs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List the tool registry (specs agents can call)",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/insights": {
+      "get": {
+        "operationId": "AgentsController_insights",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Latest marketing performance analysis — what's working vs not (signal) and what was filtered out (noise), per buy-side / sell-side segment",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/run": {
+      "post": {
+        "operationId": "AgentsController_run",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Completed agent run with steps"
+          }
+        },
+        "summary": "Run an agent and return its run with timeline",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/runs": {
+      "get": {
+        "operationId": "AgentsController_listRuns",
+        "parameters": [
+          {
+            "name": "agentType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "missionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List agent runs",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/runs/{id}": {
+      "get": {
+        "operationId": "AgentsController_getRun",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get an agent run with full timeline + reflections",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/monitor-performance": {
+      "post": {
+        "operationId": "AgentsController_monitor",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Trigger an autonomous performance sweep across posts + campaigns",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/posts/{id}/simulate": {
+      "post": {
+        "operationId": "PostActionsController_simulate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Swarm agent run with persona timeline"
+          }
+        },
+        "summary": "Run the social simulation swarm on a post",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}/analyze": {
+      "post": {
+        "operationId": "PostActionsController_analyze",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Run the performance monitoring agent on a post",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/posts/{id}/approve": {
+      "post": {
+        "operationId": "PostActionsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Human-approve a post (moves it to approved)",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/api/integrations": {
+      "get": {
+        "operationId": "IntegrationsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List content-calendar integrations + connection status",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/calendar": {
+      "get": {
+        "operationId": "IntegrationsController_calendar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Synced content calendar — connected external sources + their events. When a source is connected it is the source of truth; Hiive overlays it.",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/{provider}/connect": {
+      "post": {
+        "operationId": "IntegrationsController_connect",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Connect a content-calendar app",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/{provider}/disconnect": {
+      "post": {
+        "operationId": "IntegrationsController_disconnect",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Disconnect a content-calendar app",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/{provider}/sync": {
+      "post": {
+        "operationId": "IntegrationsController_sync",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Push the calendar out + pull external events",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/{provider}/publish": {
+      "post": {
+        "operationId": "IntegrationsController_publish",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Publish a post through a connected publishing account (gated on credentials)",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/integrations/calendar.ics": {
+      "get": {
+        "operationId": "IntegrationsController_ics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download the content calendar as iCalendar (.ics)",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/webhooks/calendar": {
+      "post": {
+        "operationId": "WebhooksController_inbound",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Inbound webhook — an external tool pushes a change in",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/missions": {
+      "post": {
+        "operationId": "MissionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMissionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mission created"
+          }
+        },
+        "summary": "Create a mission (the unit of goal-driven work)",
+        "tags": [
+          "missions"
+        ]
+      },
+      "get": {
+        "operationId": "MissionsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List missions",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{id}": {
+      "get": {
+        "operationId": "MissionsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a mission with campaigns + agent runs",
+        "tags": [
+          "missions"
+        ]
+      },
+      "patch": {
+        "operationId": "MissionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMissionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update a mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{id}/progress": {
+      "get": {
+        "operationId": "MissionsController_progress",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Mission goal progress vs target metric",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{id}/run": {
+      "post": {
+        "operationId": "MissionsController_run",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Run the mission: Planner → Strategy (creates campaign) → Content → Compliance → Swarm → Approval gates. Returns the mission with its full agent-run timeline.",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "operationId": "ChatController_send",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Answer + tool-call trace + run id"
+          }
+        },
+        "summary": "Chat with the marketing co-pilot (tool-calling)",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/jobs/weekly-report": {
+      "post": {
+        "operationId": "JobsController_weeklyReport",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Generate the weekly marketing report now",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "get": {
+        "operationId": "JobsController_preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Preview the weekly marketing report",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/autonomous/status": {
+      "get": {
+        "operationId": "AutonomousController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Autonomous engine status (enabled, tick count, cadence)",
+        "tags": [
+          "autonomous"
+        ]
+      }
+    },
+    "/api/autonomous/activity": {
+      "get": {
+        "operationId": "AutonomousController_activity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Recent autonomous actions (what the agents did on their own)",
+        "tags": [
+          "autonomous"
+        ]
+      }
+    },
+    "/api/autonomous/toggle": {
+      "post": {
+        "operationId": "AutonomousController_toggle",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Pause or resume the autonomous engine",
+        "tags": [
+          "autonomous"
+        ]
+      }
+    },
+    "/api/autonomous/heartbeat-toggle": {
+      "post": {
+        "operationId": "AutonomousController_heartbeatToggle",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Pause or resume the heartbeat (roster) loop",
+        "tags": [
+          "autonomous"
+        ]
+      }
+    },
+    "/api/autonomous/tick": {
+      "post": {
+        "operationId": "AutonomousController_tick",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Run one autonomous tick now (demo acceleration)",
+        "tags": [
+          "autonomous"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Hiive Agentic Marketing OS",
+    "description": "Mission-driven, multi-agent marketing operating system: RAG memory, campaign intelligence, swarm simulation, autonomous monitoring, human-in-the-loop approvals, and a continuous learning flywheel.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "SearchMemoryDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "example": "sell-side messaging tone and compliance-safe claims"
+          },
+          "tags": {
+            "example": [
+              "brand_guideline",
+              "compliance"
+            ],
+            "description": "Restrict to chunks overlapping any of these tags",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memoryType": {
+            "type": "string",
+            "enum": [
+              "semantic",
+              "episodic",
+              "procedural"
+            ]
+          },
+          "limit": {
+            "type": "number",
+            "default": 6,
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "MemoryHitDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memoryType": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "object",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "example": 0.82
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "tags",
+          "memoryType",
+          "fileId",
+          "score"
+        ]
+      },
+      "CreateCampaignDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Sell-side Founder Liquidity Campaign"
+          },
+          "objective": {
+            "type": "string",
+            "example": "Increase inbound sellers of pre-IPO shares"
+          },
+          "audience": {
+            "type": "string",
+            "example": "Startup employees, founders, early investors"
+          },
+          "channels": {
+            "example": [
+              "LinkedIn",
+              "Email",
+              "X"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "budget": {
+            "type": "number",
+            "example": 25000
+          },
+          "goals": {
+            "type": "object",
+            "example": {
+              "impressions": 50000,
+              "clicks": 1500,
+              "leads": 100
+            },
+            "description": "Goal targets (leads maps to conversions)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "paused",
+              "completed"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "missionId": {
+            "type": "string",
+            "description": "Owning mission id"
+          }
+        },
+        "required": [
+          "name",
+          "objective",
+          "audience",
+          "goals"
+        ]
+      },
+      "UpdateCampaignDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Sell-side Founder Liquidity Campaign"
+          },
+          "objective": {
+            "type": "string",
+            "example": "Increase inbound sellers of pre-IPO shares"
+          },
+          "audience": {
+            "type": "string",
+            "example": "Startup employees, founders, early investors"
+          },
+          "channels": {
+            "example": [
+              "LinkedIn",
+              "Email",
+              "X"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "budget": {
+            "type": "number",
+            "example": 25000
+          },
+          "goals": {
+            "type": "object",
+            "example": {
+              "impressions": 50000,
+              "clicks": 1500,
+              "leads": 100
+            },
+            "description": "Goal targets (leads maps to conversions)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "paused",
+              "completed"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "missionId": {
+            "type": "string",
+            "description": "Owning mission id"
+          }
+        }
+      },
+      "CreatePostDto": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "example": "campaign id"
+          },
+          "platform": {
+            "type": "string",
+            "example": "LinkedIn"
+          },
+          "copy": {
+            "type": "string",
+            "example": "Thinking about liquidity before your IPO? ..."
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "scheduled",
+              "published",
+              "analyzing",
+              "underperforming",
+              "completed"
+            ]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "example": "2026-06-10T09:00:00.000Z"
+          }
+        },
+        "required": [
+          "campaignId",
+          "platform",
+          "copy"
+        ]
+      },
+      "UpdatePostDto": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "example": "campaign id"
+          },
+          "platform": {
+            "type": "string",
+            "example": "LinkedIn"
+          },
+          "copy": {
+            "type": "string",
+            "example": "Thinking about liquidity before your IPO? ..."
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "scheduled",
+              "published",
+              "analyzing",
+              "underperforming",
+              "completed"
+            ]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "example": "2026-06-10T09:00:00.000Z"
+          }
+        }
+      },
+      "UpdateMetricsDto": {
+        "type": "object",
+        "properties": {
+          "metrics": {
+            "type": "object",
+            "example": {
+              "impressions": 1000,
+              "likes": 50,
+              "comments": 5,
+              "shares": 2,
+              "clicks": 12,
+              "conversions": 1
+            },
+            "description": "Manually entered metrics. CTR is recomputed from clicks/impressions."
+          }
+        },
+        "required": [
+          "metrics"
+        ]
+      },
+      "CreateAdDto": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Founder liquidity — value prop A"
+          },
+          "platform": {
+            "type": "string",
+            "example": "LinkedIn"
+          },
+          "budget": {
+            "type": "number",
+            "example": 5000
+          },
+          "spend": {
+            "type": "number",
+            "example": 1200
+          },
+          "impressions": {
+            "type": "number",
+            "example": 40000
+          },
+          "clicks": {
+            "type": "number",
+            "example": 380
+          },
+          "conversions": {
+            "type": "number",
+            "example": 14
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "paused",
+              "completed"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-06-30T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "campaignId",
+          "name",
+          "platform",
+          "budget"
+        ]
+      },
+      "UpdateAdDto": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Founder liquidity — value prop A"
+          },
+          "platform": {
+            "type": "string",
+            "example": "LinkedIn"
+          },
+          "budget": {
+            "type": "number",
+            "example": 5000
+          },
+          "spend": {
+            "type": "number",
+            "example": 1200
+          },
+          "impressions": {
+            "type": "number",
+            "example": 40000
+          },
+          "clicks": {
+            "type": "number",
+            "example": 380
+          },
+          "conversions": {
+            "type": "number",
+            "example": 14
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "paused",
+              "completed"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-06-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-06-30T00:00:00.000Z"
+          }
+        }
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "comment",
+              "suggestion"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "example": "This CTA is too vague."
+          },
+          "quotedText": {
+            "type": "string",
+            "description": "Highlighted span the comment refers to"
+          },
+          "rangeStart": {
+            "type": "number"
+          },
+          "rangeEnd": {
+            "type": "number"
+          },
+          "suggestedText": {
+            "type": "string",
+            "description": "Replacement text for a suggestion"
+          }
+        },
+        "required": [
+          "type",
+          "body"
+        ]
+      },
+      "RunAgentDto": {
+        "type": "object",
+        "properties": {
+          "agentType": {
+            "type": "string",
+            "example": "ContentGenerationAgent",
+            "description": "Agent type to run"
+          },
+          "input": {
+            "type": "object",
+            "example": {
+              "campaignId": "abc",
+              "count": 3
+            },
+            "description": "Agent input payload"
+          },
+          "missionId": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentType",
+          "input"
+        ]
+      },
+      "CreateMissionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Increase sell-side founder leads by 30%"
+          },
+          "objective": {
+            "type": "string",
+            "example": "Drive more inbound founders who want pre-IPO liquidity"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "targetMetric": {
+            "type": "object",
+            "example": {
+              "metric": "founder_leads",
+              "baseline": 100,
+              "target": 130,
+              "unit": "leads"
+            }
+          },
+          "audience": {
+            "type": "string",
+            "example": "Startup founders and early employees"
+          }
+        },
+        "required": [
+          "title",
+          "objective",
+          "targetMetric"
+        ]
+      },
+      "UpdateMissionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Increase sell-side founder leads by 30%"
+          },
+          "objective": {
+            "type": "string",
+            "example": "Drive more inbound founders who want pre-IPO liquidity"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "targetMetric": {
+            "type": "object",
+            "example": {
+              "metric": "founder_leads",
+              "baseline": 100,
+              "target": 130,
+              "unit": "leads"
+            }
+          },
+          "audience": {
+            "type": "string",
+            "example": "Startup founders and early employees"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "planning",
+              "executing",
+              "evaluating",
+              "reflecting",
+              "awaiting_approval",
+              "completed",
+              "failed"
+            ]
+          }
+        }
+      },
+      "ChatTurnDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ]
+      },
+      "ChatRequestDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Why is the founder liquidity campaign not converting?"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatTurnDto"
+            }
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    }
+  }
+}
