@@ -13,6 +13,7 @@ export type AgentType =
   | 'MemoryRetrievalAgent'
   | 'EngagementAgent'
   | 'MarketingPerformanceAnalyzerAgent'
+  | 'PrePublishReviewAgent'
   | 'ChatAgent';
 
 export type StepType =

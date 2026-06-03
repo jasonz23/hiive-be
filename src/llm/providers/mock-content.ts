@@ -565,6 +565,36 @@ function buildMarketingInsights(
   return { summary, insights };
 }
 
+/** Memory-grounded feedback on an approved post, before it publishes. */
+function buildPrePublishFeedback(
+  ctx: Record<string, unknown> | undefined,
+  _seed: number,
+): unknown {
+  const segment = str(ctx, 'segment', 'sell-side');
+  const channel = str(ctx, 'channel', 'LinkedIn');
+  const past = str(ctx, 'pastSummary', '');
+  const hasPast = past.length > 0;
+  return {
+    alignment: 'aligned',
+    summary: `Checked against what's worked for ${segment} prospects on ${channel}. This is broadly on-strategy; a couple of tweaks would tighten it.`,
+    strengths: [
+      `Leads with the ${segment} decision, which past high-CTR posts on ${channel} also did`,
+      'On-brand: confident and compliance-safe (no guarantees or pressure)',
+    ],
+    risks: hasPast
+      ? [
+          `Similar past ${channel} posts that underperformed were too generic — keep this specific`,
+        ]
+      : ['Limited prior data for this segment/channel — monitor closely after publish'],
+    suggestions: [
+      `Name the value to ${segment} prospects more directly in the CTA`,
+      hasPast
+        ? `Mirror the hook style from your best past ${channel} post`
+        : 'A/B test one sharper hook variant',
+    ],
+  };
+}
+
 const BUILDERS: Record<
   MockPurpose,
   (ctx: Record<string, unknown> | undefined, _seed: number) => unknown
@@ -581,6 +611,7 @@ const BUILDERS: Record<
   campaign_summary: buildCampaignSummary,
   engagement_summary: buildEngagementSummary,
   marketing_insights: buildMarketingInsights,
+  pre_publish_feedback: buildPrePublishFeedback,
   chat: () => ({ answer: 'See tool results.' }),
 };
 

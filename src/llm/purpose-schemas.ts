@@ -30,5 +30,7 @@ export const PURPOSE_SCHEMAS: Record<MockPurpose, string> = {
     '{ "sentiment": "positive"|"negative"|"mixed", "summary": string, "themes": string[], "replies": [{ "label": string, "text": string }], "objection": string|null, "copySuggestion": string|null }',
   marketing_insights:
     '{ "summary": string, "insights": [{ "kind": "working"|"not_working", "segment": string, "channel": string, "headline": string, "detail": string }] }',
+  pre_publish_feedback:
+    '{ "alignment": "aligned"|"mixed"|"off", "summary": string, "strengths": string[], "risks": string[], "suggestions": string[] }',
   chat: '{ "answer": string }',
 };

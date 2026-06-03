@@ -1476,7 +1476,7 @@
             "description": ""
           }
         },
-        "summary": "Human-approve a post (moves it to approved)",
+        "summary": "Human-approve a post (moves it to approved) + a memory-grounded pre-publish review",
         "tags": [
           "posts"
         ]

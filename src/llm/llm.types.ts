@@ -71,6 +71,7 @@ export type MockPurpose =
   | 'campaign_summary'
   | 'engagement_summary'
   | 'marketing_insights'
+  | 'pre_publish_feedback'
   | 'chat';
 
 export interface LlmProvider {

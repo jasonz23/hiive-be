@@ -16,6 +16,7 @@ import { ContentGenerationAgent } from './impl/content.agent';
 import { EngagementAgent } from './impl/engagement.agent';
 import { MarketingPerformanceAnalyzerAgent } from './impl/insights.agent';
 import { MemoryRetrievalAgent } from './impl/memory-retrieval.agent';
+import { PrePublishReviewAgent } from './impl/pre-publish-review.agent';
 import { PerformanceMonitoringAgent } from './impl/performance.agent';
 import { PlannerAgent } from './impl/planner.agent';
 import { ReplicationAgent } from './impl/replication.agent';
@@ -45,6 +46,7 @@ import { ToolRegistryService } from './tools/tool-registry.service';
     MemoryRetrievalAgent,
     EngagementAgent,
     MarketingPerformanceAnalyzerAgent,
+    PrePublishReviewAgent,
   ],
   exports: [
     AgentOrchestratorService,

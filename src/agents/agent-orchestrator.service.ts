@@ -11,6 +11,7 @@ import { ComplianceReviewAgent } from './impl/compliance.agent';
 import { ContentGenerationAgent } from './impl/content.agent';
 import { EngagementAgent } from './impl/engagement.agent';
 import { MarketingPerformanceAnalyzerAgent } from './impl/insights.agent';
+import { PrePublishReviewAgent } from './impl/pre-publish-review.agent';
 import { MemoryRetrievalAgent } from './impl/memory-retrieval.agent';
 import { PerformanceMonitoringAgent } from './impl/performance.agent';
 import { PlannerAgent } from './impl/planner.agent';
@@ -55,6 +56,7 @@ export class AgentOrchestratorService {
     memory: MemoryRetrievalAgent,
     engagement: EngagementAgent,
     insights: MarketingPerformanceAnalyzerAgent,
+    prePublish: PrePublishReviewAgent,
   ) {
     const all: Agent[] = [
       planner,
@@ -69,6 +71,7 @@ export class AgentOrchestratorService {
       memory,
       engagement,
       insights,
+      prePublish,
     ];
     this.registry = new Map(all.map((a) => [a.type, a]));
   }

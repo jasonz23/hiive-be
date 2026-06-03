@@ -46,8 +46,23 @@ export class PostActionsController {
   }
 
   @Post(':id/approve')
-  @ApiOperation({ summary: 'Human-approve a post (moves it to approved)' })
-  approve(@Param('id') id: string) {
-    return this.posts.approve(id);
+  @ApiOperation({
+    summary:
+      'Human-approve a post (moves it to approved) + a memory-grounded pre-publish review',
+  })
+  async approve(@Param('id') id: string) {
+    const post = await this.posts.approve(id);
+    // Pre-publish review: feedback grounded in memory of past posts + learnings.
+    // Best-effort — never block approval if it fails.
+    try {
+      await this.orchestrator.runAgent(
+        'PrePublishReviewAgent',
+        { postId: id },
+        { entityType: 'post', entityId: id },
+      );
+    } catch {
+      /* feedback is best-effort */
+    }
+    return post;
   }
 }
