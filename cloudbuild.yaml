@@ -9,8 +9,8 @@ substitutions:
   # comma-separated list. Add your custom domain here too if you have one.
   _CORS_ALLOW_LIST: 'https://*.vercel.app'
   # File storage — GCS in prod (Cloud Run provides ADC credentials automatically).
-  _GCS_BUCKET_NAME: hiive-uploads
-  _BACKEND_ORIGIN: https://hiive-be.run.app
+  _GCS_BUCKET_NAME: neb-staging-uploads
+  _BACKEND_ORIGIN: https://hiive-be-1026681251800.us-west1.run.app
   # Boot idle in staging so it doesn't burn OpenAI 24/7 — flip with the in-app
   # Engine toggles or set this to 'false'.
   _AUTONOMOUS_DISABLED: 'true'

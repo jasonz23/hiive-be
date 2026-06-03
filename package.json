@@ -30,7 +30,8 @@
     "db:seed:marketing": "ts-node -r tsconfig-paths/register prisma/seed-marketing.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:reset": "docker compose down -v && docker compose up -d"
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "db:seed:sql": "prisma db execute --file ./prisma/seed.sql --schema ./prisma/schema.prisma"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
