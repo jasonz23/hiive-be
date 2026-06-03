@@ -5,6 +5,7 @@ import { LlmService } from '../llm/llm.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReflectionsService } from '../reflections/reflections.service';
 import { AgentRunService } from './agent-run.service';
+import { AgentRuntimeService } from './agent-runtime.service';
 import { Agent, AgentResult, AgentType, RunOptions } from './agent.types';
 import { AdsOptimizationAgent } from './impl/ads.agent';
 import { ComplianceReviewAgent } from './impl/compliance.agent';
@@ -44,6 +45,7 @@ export class AgentOrchestratorService {
     private readonly llm: LlmService,
     private readonly audit: AuditService,
     private readonly prisma: PrismaService,
+    private readonly runtime: AgentRuntimeService,
     planner: PlannerAgent,
     strategy: CampaignStrategyAgent,
     content: ContentGenerationAgent,
@@ -119,6 +121,21 @@ export class AgentOrchestratorService {
       throw new BadRequestException(
         `Unknown agent "${agentType}". Available: ${this.availableAgents().join(', ')}`,
       );
+    }
+
+    // Master switch: automatic (engine/event-driven) runs are suppressed when
+    // agents are toggled off, so no background work and no LLM calls happen.
+    // Explicit user-initiated runs (no `auto` flag) are never blocked.
+    if (options.auto && this.runtime.isAllOff()) {
+      const reason = 'agents disabled';
+      const skipped = await this.runService.start(agentType, input, options);
+      await this.runService.step(skipped.id, 'output', `Skipped — ${reason}`);
+      await this.runService.finish(skipped.id, {
+        output: { skipped: true, reason },
+        summary: `Skipped — ${reason}`,
+        status: AgentRunStatus.skipped,
+      });
+      return this.runService.get(skipped.id);
     }
 
     // Let the agent bow out before any expensive work if it has nothing to do.

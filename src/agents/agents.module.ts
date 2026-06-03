@@ -6,6 +6,7 @@ import { MemoryModule } from '../memory/memory.module';
 import { PostsModule } from '../posts/posts.module';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { AgentRunService } from './agent-run.service';
+import { AgentRuntimeService } from './agent-runtime.service';
 import { AgentSupportService } from './agent-support.service';
 import { AgentsController } from './agents.controller';
 import { PostActionsController } from './post-actions.controller';
@@ -31,6 +32,7 @@ import { ToolRegistryService } from './tools/tool-registry.service';
   providers: [
     AgentRunService,
     AgentSupportService,
+    AgentRuntimeService,
     AgentOrchestratorService,
     PostMonitorListener,
     ToolRegistryService,
@@ -51,6 +53,7 @@ import { ToolRegistryService } from './tools/tool-registry.service';
   exports: [
     AgentOrchestratorService,
     AgentRunService,
+    AgentRuntimeService,
     ToolRegistryService,
     AgentSupportService,
   ],

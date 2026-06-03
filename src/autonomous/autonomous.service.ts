@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { ApprovalType, PostStatus } from '@prisma/client';
 import { AgentOrchestratorService } from '../agents/agent-orchestrator.service';
+import { AgentRuntimeService } from '../agents/agent-runtime.service';
 import { RunOptions } from '../agents/agent.types';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AudienceService } from '../audience/audience.service';
@@ -28,13 +29,11 @@ const RETIRE_IMPRESSIONS = 400_000; // mature posts leave the live loop
 @Injectable()
 export class AutonomousService {
   private readonly logger = new Logger(AutonomousService.name);
-  // Two independent switches. `enabled` drives the reactive data loop (metric
-  // pulls, draft advancement, campaign sweeps + the hourly monitor cron);
-  // `heartbeatEnabled` drives the heartbeat that exercises the wider roster.
-  // When BOTH are off, no agent runs and zero LLM calls are made.
-  // On by default; the seed sets AUTONOMOUS_DISABLED so it stays idle there.
-  private enabled = process.env.AUTONOMOUS_DISABLED !== 'true';
-  private heartbeatEnabled = process.env.AUTONOMOUS_DISABLED !== 'true';
+  // The two switches (`enabled` = reactive data loop + hourly monitor cron +
+  // metric-refresh performance loop; `heartbeatEnabled` = the roster heartbeat)
+  // live in AgentRuntimeService, the single source of truth shared with the
+  // agent orchestrator and the metric-refresh listener. When BOTH are off, no
+  // agent runs anywhere and zero LLM calls are made.
   private tickCount = 0;
   private running = false;
   private lastTickAt: string | null = null;
@@ -47,14 +46,15 @@ export class AutonomousService {
     private readonly approvals: ApprovalsService,
     private readonly audit: AuditService,
     private readonly audience: AudienceService,
+    private readonly runtime: AgentRuntimeService,
   ) {}
 
   status() {
     return {
-      enabled: this.enabled,
-      heartbeatEnabled: this.heartbeatEnabled,
+      enabled: this.runtime.isAutonomousEnabled(),
+      heartbeatEnabled: this.runtime.isHeartbeatEnabled(),
       // True only when nothing is running and no agent can make an LLM call.
-      allOff: !this.enabled && !this.heartbeatEnabled,
+      allOff: this.runtime.isAllOff(),
       running: this.running,
       tickCount: this.tickCount,
       lastTickAt: this.lastTickAt,
@@ -69,17 +69,17 @@ export class AutonomousService {
 
   /** Whether the reactive data loop (and hourly monitor cron) may run. */
   isAutonomousEnabled(): boolean {
-    return this.enabled;
+    return this.runtime.isAutonomousEnabled();
   }
 
   setEnabled(enabled: boolean): { enabled: boolean } {
-    this.enabled = enabled;
+    this.runtime.setAutonomous(enabled);
     this.log(enabled ? 'Autonomous mode resumed' : 'Autonomous mode paused');
     return { enabled };
   }
 
   setHeartbeatEnabled(enabled: boolean): { heartbeatEnabled: boolean } {
-    this.heartbeatEnabled = enabled;
+    this.runtime.setHeartbeat(enabled);
     this.log(enabled ? 'Heartbeat resumed' : 'Heartbeat paused');
     return { heartbeatEnabled: enabled };
   }
@@ -87,28 +87,28 @@ export class AutonomousService {
   @Interval(TICK_MS)
   async scheduledTick(): Promise<void> {
     // Nothing scheduled to do if both switches are off — no work, no LLM calls.
-    if (!this.enabled && !this.heartbeatEnabled) return;
+    if (this.runtime.isAllOff()) return;
     await this.tick();
   }
 
   /** One unit of autonomous work. Exposed for on-demand demo acceleration. */
   async tick(): Promise<{ actions: string[] }> {
     if (this.running) return { actions: [] };
-    if (!this.enabled && !this.heartbeatEnabled) return { actions: [] };
+    if (this.runtime.isAllOff()) return { actions: [] };
     this.running = true;
     const actions: string[] = [];
     try {
       this.tickCount += 1;
       // Reactive data loop — only when autonomous is on.
-      if (this.enabled) {
+      if (this.runtime.isAutonomousEnabled()) {
         await this.pullMetrics(actions);
         await this.advanceDraft(actions);
       }
       // Heartbeat roster loop — independently gated.
-      if (this.heartbeatEnabled) {
+      if (this.runtime.isHeartbeatEnabled()) {
         await this.heartbeat(actions);
       }
-      if (this.enabled && this.tickCount % 5 === 0) {
+      if (this.runtime.isAutonomousEnabled() && this.tickCount % 5 === 0) {
         await this.sweepCampaigns(actions);
       }
       this.lastTickAt = new Date().toISOString();

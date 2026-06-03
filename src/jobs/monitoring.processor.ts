@@ -26,13 +26,17 @@ export class MonitoringProcessor extends WorkerHost {
   ): Promise<void> {
     this.logger.log(`Processing ${job.name} (${job.id})`);
     if (job.name === JOB_MONITOR_POST && job.data.postId) {
-      await this.orchestrator.runAgent('PerformanceMonitoringAgent', {
-        postId: job.data.postId,
-      });
+      await this.orchestrator.runAgent(
+        'PerformanceMonitoringAgent',
+        { postId: job.data.postId },
+        { auto: true },
+      );
     } else if (job.name === JOB_MONITOR_CAMPAIGN && job.data.campaignId) {
-      await this.orchestrator.runAgent('PerformanceMonitoringAgent', {
-        campaignId: job.data.campaignId,
-      });
+      await this.orchestrator.runAgent(
+        'PerformanceMonitoringAgent',
+        { campaignId: job.data.campaignId },
+        { auto: true },
+      );
     }
   }
 }

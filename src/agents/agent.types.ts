@@ -61,4 +61,10 @@ export interface RunOptions {
   entityId?: string;
   /** Skip the automatic reflection step (used by sub-agents inside a swarm). */
   skipReflection?: boolean;
+  /**
+   * Marks a run as automatic (fired by the engine/event loop, not an explicit
+   * user action). Automatic runs are suppressed when the agent runtime is fully
+   * off, so toggling agents off in Settings stops *all* background agent work.
+   */
+  auto?: boolean;
 }
