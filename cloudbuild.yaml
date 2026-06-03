@@ -2,7 +2,7 @@
 # Deployed to the same GCP project the build runs in ($PROJECT_ID).
 substitutions:
   _REGION: us-west1
-  _ARTIFACT_REPOSITORY: hiive-backend
+  _ARTIFACT_REPOSITORY: hiive-take-home
   _IMAGE_NAME: hiive-be
   _CLOUD_RUN_SERVICE: hiive-be
   # CORS allow-list — supports wildcards (e.g. https://*.vercel.app) and a
